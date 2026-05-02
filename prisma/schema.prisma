@@ -1,0 +1,116 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String?       @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String        @default("student")
+  createdAt     DateTime      @default(now())
+  accounts      Account[]
+  sessions      Session[]
+  testResults   TestResult[]
+  certificates  Certificate[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PracticeTest {
+  id           String        @id @default(cuid())
+  title        String
+  subject      String
+  difficulty   String        @default("medium")
+  description  String?
+  timeLimit    Int           @default(30)
+  year         Int           @default(2024)
+  moduleNumber Int           @default(1)
+  section      String        @default("english")
+  createdAt    DateTime      @default(now())
+  questions    Question[]
+  testResults  TestResult[]
+  certificates Certificate[]
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  practiceTestId String
+  text         String
+  optionA      String
+  optionB      String
+  optionC      String
+  optionD      String
+  correctAnswer String
+  explanation  String?
+  order        Int          @default(0)
+  practiceTest PracticeTest @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+}
+
+model TestResult {
+  id             String       @id @default(cuid())
+  userId         String
+  practiceTestId String
+  score          Int
+  totalQuestions Int
+  timeTaken      Int?
+  completedAt    DateTime     @default(now())
+  answers        String       // JSON string of answers
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  practiceTest   PracticeTest @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+  certificate    Certificate?
+}
+
+model Certificate {
+  id             String       @id @default(cuid())
+  userId         String
+  testResultId   String       @unique
+  practiceTestId String
+  certificateId  String       @unique
+  issuedAt       DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testResult     TestResult   @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+  practiceTest   PracticeTest @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, practiceTestId])
+}
